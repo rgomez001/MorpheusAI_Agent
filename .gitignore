@@ -9,9 +9,12 @@ __pycache__/
 .Python
 env/
 venv/
-.env/
 .venv/
 
 # IDE
 .vscode/
-.idea/ 
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
