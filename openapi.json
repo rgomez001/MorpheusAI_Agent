@@ -1,5 +1,116 @@
 {
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Twitter API Integration for Morpheus AI",
+    "version": "1.0.0",
+    "description": "Twitter bot for Morpheus AI project",
+    "termsOfService": "https://github.com/rgomez001/MorpheusAI-TwitterApp/blob/main/README.md",
+    "privacy": "https://rgomez001.github.io/MorpheusAI-TwitterApp/PRIVACY.md",
+    "contact": {
+      "name": "Rodrigo Gomez",
+      "url": "https://github.com/rgomez001/MorpheusAI-TwitterApp"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.twitter.com/2",
+      "description": "Twitter API Base URL"
+    }
+  ],
+  "paths": {
+    "/search_tweets": {
+      "get": {
+        "summary": "Search tweets by keywords",
+        "operationId": "searchTweets",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Keywords to search for (e.g., 'Cardano')."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of tweets matching the query.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Tweet"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/post_reply": {
+      "post": {
+        "summary": "Post a reply to a tweet",
+        "operationId": "postReply",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reply posted successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   "components": {
+    "schemas": {
+      "Tweet": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "text": { "type": "string" },
+          "author_id": { "type": "string" }
+        }
+      },
+      "ReplyRequest": {
+        "type": "object",
+        "properties": {
+          "tweet_id": {
+            "type": "string",
+            "description": "The ID of the tweet to reply to."
+          },
+          "reply_text": {
+            "type": "string",
+            "description": "The text of the reply."
+          }
+        },
+        "required": ["tweet_id", "reply_text"]
+      },
+      "ReplyResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "text": { "type": "string" }
+        }
+      }
+    },
     "securitySchemes": {
       "OAuth2": {
         "type": "oauth2",
@@ -16,5 +127,10 @@
         }
       }
     }
-  }
+  },
+  "security": [
+    {
+      "OAuth2": ["tweet.read", "tweet.write", "users.read"]
+    }
+  ]
 } 

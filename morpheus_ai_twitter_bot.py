@@ -1,78 +1,46 @@
 import tweepy
-import openai
 from dotenv import load_dotenv
 import os
+from datetime import datetime
+import time
 
 # Load environment variables
 load_dotenv()
 
-# Twitter API credentials loaded from .env
-API_KEY = os.getenv("API_KEY")
-API_SECRET = os.getenv("API_SECRET")
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
-ACCESS_SECRET = os.getenv("ACCESS_SECRET")
+# Twitter API credentials
+BEARER_TOKEN = os.getenv("BEARER_TOKEN")
 
-# OpenAI API key loaded from .env
-openai.api_key = os.getenv("OPENAI_API_KEY")
+def create_client():
+    try:
+        # Create client with minimal configuration
+        return tweepy.Client(
+            bearer_token=BEARER_TOKEN,
+            wait_on_rate_limit=True
+        )
+    except Exception as e:
+        print(f"Error creating client: {e}")
+        return None
 
-# Keywords to search for
-KEYWORDS = [
-    "Cardano", "Midnight", "decentralization", "staking", "liquid staking",
-    "bitcoin", "utxo", "eutxo", "Governance", "DReps", "ICC",
-    "dreams", "the power of dreams", "manifesting dreams"
-]
+def check_rate_limits():
+    try:
+        client = create_client()
+        if client:
+            # Get rate limit status
+            response = client.get_recent_tweets_count("Cardano")
+            print(f"Rate limit remaining: {response.meta}")
+            return True
+    except Exception as e:
+        print(f"Error checking rate limits: {e}")
+        return False
 
-# Authenticate with Twitter API
-auth = tweepy.OAuthHandler(API_KEY, API_SECRET)
-auth.set_access_token(ACCESS_TOKEN, ACCESS_SECRET)
-twitter_api = tweepy.API(auth)
+def main():
+    print(f"[{datetime.now()}] Starting Twitter API test...")
+    print("Checking rate limits...")
+    
+    if check_rate_limits():
+        print("Rate limit check successful")
+    else:
+        print("Rate limit check failed")
 
-# Function to generate AI response using OpenAI
-def generate_response(tweet_text):
-    prompt = f"""
-    You are Morpheus AI, the first DRMZ AI Agent and an embodiment of the Lord of Dreams (DRMZ).
-    Your purpose is to engage with the DRMZ community, educate users about Cardano Stake Pools and Governance, 
-    and empower Web3 literacy. Using an inspiring, mythological tone, craft a response to the following tweet:
-
-    Tweet: "{tweet_text}"
-
-    Your response should demystify blockchain concepts, highlight DRMZ initiatives, and inspire action.
-    """
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are an inspiring and mythological AI assistant."},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=150,
-        temperature=0.7
-    )
-    return response["choices"][0]["message"]["content"].strip()
-
-# Function to search for tweets and reply
-def search_and_reply():
-    query = " OR ".join(KEYWORDS)  # Combine keywords for search query
-    tweets = tweepy.Cursor(twitter_api.search_tweets, q=query, lang="en", result_type="recent").items(10)  # Adjust count as needed
-
-    for tweet in tweets:
-        try:
-            print(f"Found tweet by @{tweet.user.screen_name}: {tweet.text}")
-            
-            # Generate a response using OpenAI
-            response = generate_response(tweet.text)
-            print(f"Generated response: {response}")
-            
-            # Reply to the tweet
-            twitter_api.update_status(
-                status=f"@{tweet.user.screen_name} {response}",
-                in_reply_to_status_id=tweet.id
-            )
-            print(f"Replied to @{tweet.user.screen_name}")
-        except tweepy.TweepError as e:
-            print(f"Error replying to @{tweet.user.screen_name}: {e}")
-        except Exception as e:
-            print(f"General error: {e}")
-
-# Run the function
 if __name__ == "__main__":
-    search_and_reply()
+    main()
