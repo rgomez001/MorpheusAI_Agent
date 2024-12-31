@@ -403,7 +403,7 @@ def monitor_cardano_community(client):
 def run_morpheus_bot(client, test_mode=False):
     """Main bot function for continuous operation"""
     tracker = TweetTracker()
-    last_run_hour = None  # Track when we last posted
+    last_run_hour = None
     
     if test_mode:
         print("\nRunning in TEST MODE - Generating immediate tweet...")
@@ -416,13 +416,16 @@ def run_morpheus_bot(client, test_mode=False):
             current_hour = current_time.hour
             current_minute = current_time.minute
             
-            # Only post if we haven't posted this hour and it's within the first 5 minutes of the hour
+            # Debug logging
+            print(f"\nCurrent time: {current_time.strftime('%I:%M %p PST')}")
+            
+            # Check for scheduled hours (7 AM, 1 PM, and 6 PM)
             if current_hour != last_run_hour and current_minute < 5:
                 if current_hour == 7:
                     print("\nTime for morning tweet!")
                     if generate_and_post_tweet(client, "morning"):
                         last_run_hour = current_hour
-                elif current_hour == 12:
+                elif current_hour == 13:  # 1 PM PST
                     print("\nTime for community tweet!")
                     if generate_and_post_tweet(client, "community"):
                         last_run_hour = current_hour
@@ -434,8 +437,8 @@ def run_morpheus_bot(client, test_mode=False):
             # Monitor community
             monitor_cardano_community(client)
             
-            # Short sleep to prevent excessive API calls
-            time.sleep(60)  # Check every minute
+            # Short sleep to prevent excessive checking
+            time.sleep(30)  # Check every 30 seconds
             
         except Exception as e:
             print(f"Error in main loop: {e}")
@@ -570,10 +573,11 @@ if __name__ == "__main__":
         else:
             print("\nCurrent schedule (PST):")
             print("- 7:00 AM  : Morning tweet (GM + insight)")
-            print("- 12:00 PM : Community engagement")
+            print("- 1:00 PM  : Community engagement")
             print("- 6:00 PM  : Trending topics")
             print("\nPress Ctrl+C to stop")
-            print("\nNext scheduled tweet will be posted at the next scheduled hour.")
+            current_time = datetime.now(pytz.timezone('America/Los_Angeles'))
+            print(f"\nCurrent time: {current_time.strftime('%I:%M %p PST')}")
             run_morpheus_bot(client)
     else:
         print("\nBot startup cancelled due to authentication failure")
