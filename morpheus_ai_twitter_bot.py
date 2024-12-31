@@ -591,7 +591,7 @@ if __name__ == "__main__":
             print(f"\nBot Started at: {current_time.strftime('%I:%M:%S %p PST')}")
             print("\nScheduled Times (PST):")
             print("- 7:00 AM  : Morning tweet (GM + insight)")
-            print("- 1:00 PM  : Community engagement")
+            print("- 1:30 PM  : Community engagement")
             print("- 6:00 PM  : Trending topics")
             print("\nPress Ctrl+C to stop")
             run_morpheus_bot(client)
