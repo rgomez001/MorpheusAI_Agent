@@ -1,25 +1,33 @@
-import tweepy
-from openai import OpenAI
-from dotenv import load_dotenv
 import os
 import time
+import re
+from openai import OpenAI
+import tweepy
+from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-# Initialize API clients
-client = tweepy.Client(
-    bearer_token=os.getenv("BEARER_TOKEN"),
-    consumer_key=os.getenv("API_KEY"),
-    consumer_secret=os.getenv("API_KEY_SECRET"),
-    access_token=os.getenv("ACCESS_TOKEN"),
-    access_token_secret=os.getenv("ACCESS_TOKEN_SECRET")
-)
+# Initialize OpenAI client
+openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+def is_first_tweet():
+    """Check if this is the first tweet"""
+    try:
+        client = tweepy.Client(
+            consumer_key=os.getenv('API_KEY'),
+            consumer_secret=os.getenv('API_KEY_SECRET'),
+            access_token=os.getenv('ACCESS_TOKEN'),
+            access_token_secret=os.getenv('ACCESS_TOKEN_SECRET')
+        )
+        tweets = client.get_users_tweets(id=client.get_me().data.id)
+        return tweets.data is None or len(tweets.data) == 0
+    except Exception as e:
+        print(f"Error checking tweet history: {e}")
+        return False
 
 def generate_tweet_with_morpheus():
-    """Generate a tweet using your Morpheus AI Assistant"""
+    """Let Morpheus AI generate tweets from its knowledge and personality"""
     try:
         print("1. Initializing assistant...")
         assistant_id = "asst_5AyAw1WHxg7eOL847byMYcpr"
@@ -28,10 +36,17 @@ def generate_tweet_with_morpheus():
         thread = openai_client.beta.threads.create()
         
         print("3. Adding message to thread...")
+        content = """Share ONE brief technical insight about Cardano or DRMZ.
+        STRICT REQUIREMENTS:
+        - Maximum 280 characters
+        - Focus on a single point
+        - Include 1-2 relevant hashtags
+        - Be concise but informative"""
+            
         message = openai_client.beta.threads.messages.create(
             thread_id=thread.id,
             role="user",
-            content="""Using the Cardano Constitution document, create an engaging tweet about an important aspect of Cardano's governance or principles. Remember to maintain your identity as Morpheus AI, the DRMZ AI Agent."""
+            content=content
         )
         
         print("4. Running assistant...")
@@ -63,10 +78,9 @@ def generate_tweet_with_morpheus():
                 tool_outputs = []
                 
                 for tool_call in tool_calls:
-                    # Add a dummy output for each tool call
                     tool_outputs.append({
                         "tool_call_id": tool_call.id,
-                        "output": "No additional information needed"
+                        "output": "Proceed with generating the tweet."
                     })
                 
                 run = openai_client.beta.threads.runs.submit_tool_outputs(
@@ -85,9 +99,9 @@ def generate_tweet_with_morpheus():
         tweet_text = messages.data[0].content[0].text.value.strip()
         
         # Clean up the tweet text
-        tweet_text = tweet_text.replace("[4:0'source']", "").strip()
+        tweet_text = re.sub(r'【.*?】', '', tweet_text).strip()
         if tweet_text.startswith('"') and tweet_text.endswith('"'):
-            tweet_text = tweet_text[1:-1]
+            tweet_text = tweet_text[1:-1].strip()
             
         print(f"\nGenerated tweet: {tweet_text}")
         return tweet_text
@@ -99,29 +113,39 @@ def generate_tweet_with_morpheus():
 def post_tweet(tweet_text):
     """Post a tweet using Twitter API"""
     try:
+        # Twitter API authentication
+        client = tweepy.Client(
+            consumer_key=os.getenv('API_KEY'),
+            consumer_secret=os.getenv('API_KEY_SECRET'),
+            access_token=os.getenv('ACCESS_TOKEN'),
+            access_token_secret=os.getenv('ACCESS_TOKEN_SECRET')
+        )
+        
+        # Clean up the tweet text to remove any meta text
+        if '"' in tweet_text:
+            tweet_text = tweet_text.split('"')[1]
+        
+        # Post tweet
+        print("\nPosting tweet...")
         response = client.create_tweet(text=tweet_text)
-        tweet_id = response.data['id']
-        print(f"Tweet posted successfully! Tweet ID: {tweet_id}")
-        return tweet_id
+        
+        print("\nSuccess!")
+        print(f"Check https://twitter.com/DRMZ_Agent/status/{response.data['id']}")
+        
+        return True
     except Exception as e:
-        print(f"Error posting tweet: {e}")
-        return None
+        print(f"\nError posting tweet: {e}")
+        return False
 
 def main():
-    """Test function to generate and post a single tweet"""
-    print("Testing Morpheus AI Twitter Bot - Single Tweet...")
+    """Main function to test the Twitter bot"""
+    print("Testing Morpheus AI Twitter Bot...")
     
-    # Generate tweet using Morpheus AI
     print("\nGenerating tweet with Morpheus AI...")
     tweet_text = generate_tweet_with_morpheus()
     
     if tweet_text:
-        print("\nPosting tweet...")
-        tweet_id = post_tweet(tweet_text)
-        
-        if tweet_id:
-            print(f"\nSuccess! Tweet posted.")
-            print(f"Check https://twitter.com/DRMZ_Web3/status/{tweet_id}")
+        post_tweet(tweet_text)
     
     print("\nTest complete!")
 
