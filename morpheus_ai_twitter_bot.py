@@ -403,7 +403,7 @@ def monitor_cardano_community(client):
 def run_morpheus_bot(client, test_mode=False):
     """Main bot function for continuous operation"""
     tracker = TweetTracker()
-    last_run_hour = None
+    last_run_date = {}  # Track dates of last runs
     
     if test_mode:
         print("\nRunning in TEST MODE - Generating immediate tweet...")
@@ -413,35 +413,51 @@ def run_morpheus_bot(client, test_mode=False):
     while True:
         try:
             current_time = datetime.now(pytz.timezone('America/Los_Angeles'))
+            current_date = current_time.date()
             current_hour = current_time.hour
             current_minute = current_time.minute
             
             # Debug logging
-            print(f"\nCurrent time: {current_time.strftime('%I:%M %p PST')}")
+            print(f"\nCurrent time: {current_time.strftime('%I:%M:%S %p PST')}")
             
-            # Check for scheduled hours (7 AM, 1 PM, and 6 PM)
-            if current_hour != last_run_hour and current_minute < 5:
+            # Check if we've already tweeted today at this hour
+            today_key = f"{current_date}_{current_hour}"
+            
+            if today_key not in last_run_date and current_minute < 5:
                 if current_hour == 7:
-                    print("\nTime for morning tweet!")
+                    print("\nExecuting morning tweet...")
                     if generate_and_post_tweet(client, "morning"):
-                        last_run_hour = current_hour
+                        last_run_date[today_key] = True
+                        print("Morning tweet posted successfully!")
+                        
                 elif current_hour == 13:  # 1 PM PST
-                    print("\nTime for community tweet!")
+                    print("\nExecuting community tweet...")
                     if generate_and_post_tweet(client, "community"):
-                        last_run_hour = current_hour
+                        last_run_date[today_key] = True
+                        print("Community tweet posted successfully!")
+                        
                 elif current_hour == 18:
-                    print("\nTime for trending tweet!")
+                    print("\nExecuting trending tweet...")
                     if generate_and_post_tweet(client, "trending"):
-                        last_run_hour = current_hour
+                        last_run_date[today_key] = True
+                        print("Trending tweet posted successfully!")
+            
+            # Clean up old dates (keep only today's records)
+            last_run_date = {k: v for k, v in last_run_date.items() if k.startswith(str(current_date))}
             
             # Monitor community
             monitor_cardano_community(client)
             
-            # Short sleep to prevent excessive checking
-            time.sleep(30)  # Check every 30 seconds
+            # More frequent checks near scheduled times
+            if (current_hour in [6, 12, 17] and current_minute >= 55) or \
+               (current_hour in [7, 13, 18] and current_minute < 5):
+                time.sleep(15)  # Check every 15 seconds near scheduled times
+            else:
+                time.sleep(30)  # Regular 30-second checks
             
         except Exception as e:
             print(f"Error in main loop: {e}")
+            print(f"Full error details: {str(e)}")
             time.sleep(300)
 
 def verify_credentials():
@@ -571,13 +587,13 @@ if __name__ == "__main__":
         if choice == "2":
             run_morpheus_bot(client, test_mode=True)
         else:
-            print("\nCurrent schedule (PST):")
+            current_time = datetime.now(pytz.timezone('America/Los_Angeles'))
+            print(f"\nBot Started at: {current_time.strftime('%I:%M:%S %p PST')}")
+            print("\nScheduled Times (PST):")
             print("- 7:00 AM  : Morning tweet (GM + insight)")
             print("- 1:00 PM  : Community engagement")
             print("- 6:00 PM  : Trending topics")
             print("\nPress Ctrl+C to stop")
-            current_time = datetime.now(pytz.timezone('America/Los_Angeles'))
-            print(f"\nCurrent time: {current_time.strftime('%I:%M %p PST')}")
             run_morpheus_bot(client)
     else:
         print("\nBot startup cancelled due to authentication failure")
