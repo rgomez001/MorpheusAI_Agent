@@ -403,7 +403,11 @@ def monitor_cardano_community(client):
 def run_morpheus_bot(client, test_mode=False):
     """Main bot function for continuous operation"""
     tracker = TweetTracker()
-    last_run_date = {}  # Track dates of last runs
+    last_tweets = {
+        'morning': None,
+        'afternoon': None,
+        'evening': None
+    }
     
     if test_mode:
         print("\nRunning in TEST MODE - Generating immediate tweet...")
@@ -414,43 +418,66 @@ def run_morpheus_bot(client, test_mode=False):
         try:
             current_time = datetime.now(pytz.timezone('America/Los_Angeles'))
             current_date = current_time.date()
+            
+            # Clear daily tracking at midnight
+            if current_time.hour == 0 and current_time.minute == 0:
+                last_tweets = {
+                    'morning': None,
+                    'afternoon': None,
+                    'evening': None
+                }
+            
+            # Debug logging
+            print(f"\nChecking schedule at: {current_time.strftime('%I:%M:%S %p PST')}")
+            
+            # Morning Tweet (7:00 AM PST)
+            if (current_time.hour == 7 and 
+                current_time.minute < 5 and 
+                last_tweets['morning'] != current_date):
+                print("\nTime for morning tweet!")
+                if generate_and_post_tweet(client, "morning"):
+                    last_tweets['morning'] = current_date
+                    print("Morning tweet posted successfully!")
+            
+            # Afternoon Tweet (1:30 PM PST)
+            elif (current_time.hour == 13 and 
+                  current_time.minute >= 30 and 
+                  current_time.minute < 35 and 
+                  last_tweets['afternoon'] != current_date):
+                print("\nTime for afternoon tweet!")
+                if generate_and_post_tweet(client, "community"):
+                    last_tweets['afternoon'] = current_date
+                    print("Afternoon tweet posted successfully!")
+            
+            # Evening Tweet (6:00 PM PST)
+            elif (current_time.hour == 18 and 
+                  current_time.minute < 5 and 
+                  last_tweets['evening'] != current_date):
+                print("\nTime for evening tweet!")
+                if generate_and_post_tweet(client, "trending"):
+                    last_tweets['evening'] = current_date
+                    print("Evening tweet posted successfully!")
+            
+            # Print next tweet time
+            next_tweet_time = None
             current_hour = current_time.hour
             current_minute = current_time.minute
             
-            # Debug logging
-            print(f"\nCurrent time: {current_time.strftime('%I:%M:%S %p PST')}")
+            if current_hour < 7 or (current_hour == 7 and current_minute < 5):
+                next_tweet_time = "7:00 AM PST"
+            elif current_hour < 13 or (current_hour == 13 and current_minute < 30):
+                next_tweet_time = "1:30 PM PST"
+            elif current_hour < 18 or (current_hour == 18 and current_minute < 5):
+                next_tweet_time = "6:00 PM PST"
+            else:
+                next_tweet_time = "7:00 AM PST tomorrow"
             
-            # Check if we've already tweeted today at this hour
-            today_key = f"{current_date}_{current_hour}"
-            
-            if today_key not in last_run_date and current_minute < 5:
-                if current_hour == 7:
-                    print("\nExecuting morning tweet...")
-                    if generate_and_post_tweet(client, "morning"):
-                        last_run_date[today_key] = True
-                        print("Morning tweet posted successfully!")
-                        
-                elif current_hour == 13:  # 1 PM PST
-                    print("\nExecuting community tweet...")
-                    if generate_and_post_tweet(client, "community"):
-                        last_run_date[today_key] = True
-                        print("Community tweet posted successfully!")
-                        
-                elif current_hour == 18:
-                    print("\nExecuting trending tweet...")
-                    if generate_and_post_tweet(client, "trending"):
-                        last_run_date[today_key] = True
-                        print("Trending tweet posted successfully!")
-            
-            # Clean up old dates (keep only today's records)
-            last_run_date = {k: v for k, v in last_run_date.items() if k.startswith(str(current_date))}
-            
-            # Monitor community
-            monitor_cardano_community(client)
+            print(f"Next scheduled tweet: {next_tweet_time}")
             
             # More frequent checks near scheduled times
-            if (current_hour in [6, 12, 17] and current_minute >= 55) or \
-               (current_hour in [7, 13, 18] and current_minute < 5):
+            if ((current_hour == 6 and current_minute >= 55) or
+                (current_hour == 13 and current_minute >= 25 and current_minute < 35) or
+                (current_hour == 17 and current_minute >= 55)):
                 time.sleep(15)  # Check every 15 seconds near scheduled times
             else:
                 time.sleep(30)  # Regular 30-second checks
