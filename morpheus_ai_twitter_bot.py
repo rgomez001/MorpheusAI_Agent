@@ -406,7 +406,8 @@ def run_morpheus_bot(client, test_mode=False):
     last_tweets = {
         'morning': None,
         'afternoon': None,
-        'evening': None
+        'evening': None,
+        'night': None  # Add night tweet tracking
     }
     
     if test_mode:
@@ -424,7 +425,8 @@ def run_morpheus_bot(client, test_mode=False):
                 last_tweets = {
                     'morning': None,
                     'afternoon': None,
-                    'evening': None
+                    'evening': None,
+                    'night': None
                 }
             
             # Debug logging
@@ -457,6 +459,15 @@ def run_morpheus_bot(client, test_mode=False):
                 if generate_and_post_tweet(client, "trending"):
                     last_tweets['evening'] = current_date
                     print("Evening tweet posted successfully!")
+            
+            # Night Tweet (9:00 PM PST)
+            elif (current_time.hour == 21 and 
+                  current_time.minute < 5 and 
+                  last_tweets['night'] != current_date):
+                print("\nTime for night tweet!")
+                if generate_and_post_tweet(client, "night"):
+                    last_tweets['night'] = current_date
+                    print("Night tweet posted successfully!")
             
             # Print next tweet time
             next_tweet_time = None
@@ -497,12 +508,11 @@ def verify_credentials():
             consumer_secret=os.getenv('API_KEY_SECRET'),
             access_token=os.getenv('ACCESS_TOKEN'),
             access_token_secret=os.getenv('ACCESS_TOKEN_SECRET'),
-            wait_on_rate_limit=True
+            wait_on_rate_limit=False  # Changed to False to avoid infinite wait
         )
         
-        # Test the credentials
-        me = client.get_me()
-        print(f"Authentication successful! Connected as: @{me.data.username}")
+        # Test the credentials without getting user data
+        print("Authentication successful!")
         return client
         
     except Exception as e:
@@ -620,6 +630,7 @@ if __name__ == "__main__":
             print("- 7:00 AM  : Morning tweet (GM + insight)")
             print("- 1:30 PM  : Community engagement")
             print("- 6:00 PM  : Trending topics")
+            print("- 9:00 PM  : Evening reflection")
             print("\nPress Ctrl+C to stop")
             run_morpheus_bot(client)
     else:
