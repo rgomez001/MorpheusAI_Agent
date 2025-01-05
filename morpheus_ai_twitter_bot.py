@@ -469,20 +469,25 @@ def run_morpheus_bot(client, test_mode=False):
                     last_tweets['night'] = current_date
                     print("Night tweet posted successfully!")
             
-            # Print next tweet time
+            # Update next tweet time logic with more precise conditions
             next_tweet_time = None
             current_hour = current_time.hour
             current_minute = current_time.minute
-            
+
             if current_hour < 7 or (current_hour == 7 and current_minute < 5):
                 next_tweet_time = "7:00 AM PST"
             elif current_hour < 13 or (current_hour == 13 and current_minute < 30):
                 next_tweet_time = "1:30 PM PST"
             elif current_hour < 18 or (current_hour == 18 and current_minute < 5):
                 next_tweet_time = "6:00 PM PST"
+            elif current_hour < 21 or (current_hour == 21 and current_minute < 5):
+                next_tweet_time = "9:00 PM PST"
             else:
                 next_tweet_time = "7:00 AM PST tomorrow"
-            
+
+            # Debug print to help verify the logic
+            print(f"Checking schedule at: {current_time.strftime('%I:%M:%S %p PST')}")
+            print(f"Current hour: {current_hour}, Current minute: {current_minute}")
             print(f"Next scheduled tweet: {next_tweet_time}")
             
             # More frequent checks near scheduled times
